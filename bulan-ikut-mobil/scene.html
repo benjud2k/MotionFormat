@@ -62,6 +62,7 @@
 <div id="dunia"></div>
 <div class="kicker" id="tKick">SAINS SEHARI-HARI</div>
 <div class="judul" id="tJudul"><span class="j1">Kenapa Bulan</span><span class="j2">ngikutin kita?</span></div>
+<div class="judul" id="tPar"><span class="j1">efek ini namanya</span><span class="j2">PARALAKS</span></div>
 <!--@SCRIPT-->
 /* ==== [1] PILIH GAYA ==== */
 const DIAGRAM = q.has('diagram');                         // contoh diagram sains (blok [9]); proyek sains: true
@@ -531,7 +532,7 @@ Object.assign(GAMBAR, {
   }
 });
 // mobil(): sedan tampak samping menghadap kanan. Anak di jok belakang menengadah ke Bulan.
-const MOBIL = {sx: 380, y: 1432, s: 1.42};
+const MOBIL = {sx: 380, y: 1432, s: 1.42, a: 1};
 function mobil(c, x, y, s, t) {
   const bob = nz(t * 4, 9) * 1.6;
   c.save(); c.translate(x, y); c.scale(s, s);
@@ -573,7 +574,7 @@ const DUNIA = [
   {jenis: 'bukitG', p: .3, warna: 'bukitTengah', y: 1226, amp: 8, fr: .01, sd: 12, rim: .2},
   {jenis: 'bukitG', p: .6, warna: 'dekat', y: 1312, amp: 20, fr: .006, sd: 41, rim: .6, pudar: false,
     pohon: {jarak: 78, h0: 110, h1: 240, sd: 3, jarang: .3, bulat: .45}},
-  {jenis: 'jalan', p: .95, y: 1318, tebal: 140, ekstra: (c, t) => mobil(c, CAM.x * .95 + MOBIL.sx, MOBIL.y, MOBIL.s, t)},
+  {jenis: 'jalan', p: .95, y: 1318, tebal: 140, ekstra: (c, t) => { if (MOBIL.a <= 0) return; c.save(); c.globalAlpha = MOBIL.a; mobil(c, JM * .95 + MOBIL.sx, MOBIL.y, MOBIL.s, t); c.restore(); }},
   {jenis: 'tiang', p: 1.12, y: 1520, h: 820, jarak: 900},
   {jenis: 'rumputG', p: 1.25, y: 1505}
 ];
@@ -594,11 +595,14 @@ function lapis(c, p, fn) { const s = 1 + (CAM.z - 1) * p; c.save(); c.translate(
   c.translate(-PUSAT[0] - CAM.x * p, -PUSAT[1] - CAM.y * p); fn(); c.restore(); }
 function layar(x, y, p) { const s = 1 + (CAM.z - 1) * p; return [PUSAT[0] + (x - PUSAT[0] - CAM.x * p) * s, PUSAT[1] + (y - PUSAT[1] - CAM.y * p) * s]; }
 const LAJU = 760;   // px per detik pada lapisan p = 1 (kecepatan mobil)
-function kamera(t) {   // mendongak ke Bulan → turun ke mobil (0–2,6) → ikut melaju (2,6–8,4) → hembusan transisi
-  const a = E.io(seg(t, 0, 2.6)), b = seg(t, 2.6, 8.4), d = E.in(seg(t, 8.4, 9.6));
-  CAM.x = LAJU * t;
-  CAM.y = lerp(-560, 0, a) + nz(t * .3, 2) * 6 + nz(t * 5, 7) * 1.5;
-  CAM.z = lerp(1.22, 1, a) + .05 * E.s(b) + .25 * d;
+const T_REM = 38.2, D_REM = 2.6;   // penutup: kamera mengerem, mobil terus melaju keluar layar
+let JM = 0;                        // jarak tempuh mobil (lapisan p = 1)
+function kamera(t) {   // mendongak ke Bulan → turun ke mobil (0–2,6) → ikut melaju → (38,2) kamera berhenti, mobil pergi
+  JM = LAJU * t;
+  const a = E.io(seg(t, 0, 2.6)), tau = clamp(t - T_REM, 0, D_REM), naik = E.io(seg(t, 41.2, 45.6));
+  CAM.x = t < T_REM ? JM : LAJU * (T_REM + tau - tau * tau / (2 * D_REM));
+  CAM.y = lerp(-560, 0, a) - 300 * naik + nz(t * .3, 2) * 6 + nz(t * 5, 7) * 1.5 * (t < T_REM ? 1 : .3);
+  CAM.z = lerp(1.22, 1, a) + .05 * E.s(seg(t, 2.6, 12.9)) - .04 * naik;
 }
 
 /* ==== [8] GAMBAR & PASCA ==== */
@@ -648,9 +652,9 @@ function awanPembuka(c, t) {   // 5 baris lautan awan, jauh → dekat, menyibak 
 }
 function pasca(c, t) {   // tekstur permukaan per varian; sinar/mekar/vinyet dibaca dari palet
   c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
-  const [sx, sy] = BULAN(), kuat = .55 + .45 * E.out(seg(t, .1, 1.6)), yk = layar(0, 1500, .7)[1];
+  const [sx, sy] = SINAR || BULAN(), kuat = .55 + .45 * E.out(seg(t, .1, 1.6)), yk = layar(0, 1500, .7)[1];
   c.save(); c.beginPath(); c.rect(0, 0, W, yk); c.clip();                       // sinar tidak menyapu kaki depan
-  const nr = V === 'noir', ks = (PAL.sinarKuat ?? 1) * (nr ? 1 : kuat);
+  const nr = V === 'noir', ks = (PAL.sinarKuat ?? 1) * (nr ? 1 : kuat) * (SINAR ? SINAR[2] / .45 : 1);
   if (V === 'anime' || nr) sinarDewa(c, sx, sy, t, PAL.sinar, ks, nr ? .35 : .15, nr ? 1.3 : 1.45, nr ? 9 : 15);
   c.restore();
   if (V === 'anime') { mekar(c, PAL.mekar ?? .3); c.globalCompositeOperation = 'soft-light'; c.globalAlpha = PAL.noda ?? .5;
@@ -758,44 +762,261 @@ function diagramContoh(c, t) {
   c.restore();
 }
 
-/* ==== [10] TEKS: judul, label, subtitle ==== */
-const KICK = $('#tKick'), JUD = $('#tJudul'); KICK.style.top = (AMAN.atas + 40) + 'px'; JUD.style.top = (AMAN.atas + 110) + 'px';
+/* ==== [10] ADEGAN 3–5, TEKS, LABEL, SUBTITLE ==== */
+// WAKTU: semua detik penting di satu tempat. Diturunkan dari suara (vo-0N.mp3 sudah 1,15× & dipangkas).
+// VO: 1 @0,4 · 2 @4,9 · 3 @13,0 · 4 @23,3 · 5 @30,0 · 6 @36,7 · selesai 44,2
+const WAKTU = {judul: .6, judulKeluar: 3.3, babak: [12.9, 23.0, 29.85],
+  gunung: 7.9, bulan: 9.6, pin: [10.5, 12.5],
+  s3: {tiang: 15.3, gunung: 17.6, bulan: 19.4, angka: 20.15},
+  s4: {maju: [23.45, 26.4], arc: 24.9, bulan: 26.9, sama: 27.6},
+  s5: {mundur: 30.3, tetap: 32.2, buka: [33.8, 34.9], tali: [34.9, 36.6]},
+  par: 37.0};
+const ADEGAN = t => t < WAKTU.babak[0] ? 1 : t < WAKTU.babak[1] ? 3 : t < WAKTU.babak[2] ? 4 : 5;
+let SINAR = null;   // sumber sinar dewa di layar [x, y, kuat]; null = Bulan di dunia jalan
+
+// --- transisi: hembusan biru menyapu dari kanan ke kiri, adegan berganti saat layar tertutup penuh (detik m)
+function sapu(c, t, m, d = .42) {
+  const p = (t - (m - d)) / (2 * d); if (p <= 0 || p >= 1) return;
+  const BW = W * 1.65, xf = lerp(W * 1.05, -BW - W * .05, E.io(p)), w = '#2A3366';
+  c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
+  let g = c.createLinearGradient(xf - 320, 0, xf, 0); g.addColorStop(0, rgba(w, 0)); g.addColorStop(1, w);
+  c.fillStyle = g; c.fillRect(xf - 320, 0, 320, H); c.fillStyle = w; c.fillRect(xf - 1, 0, BW + 2, H);
+  g = c.createLinearGradient(xf + BW, 0, xf + BW + 320, 0); g.addColorStop(0, w); g.addColorStop(1, rgba(w, 0));
+  c.fillStyle = g; c.fillRect(xf + BW, 0, 320, H);
+  c.strokeStyle = 'rgba(180,200,255,.55)'; c.lineCap = 'round';
+  for (let i = 0; i < 70; i++) { const y = hash(i) * H, x = xf - 200 + hash(i + 9) * (BW + 400), l = 80 + hash(i + 3) * 260;
+    c.lineWidth = 1 + hash(i + 5) * 3; c.beginPath(); c.moveTo(x, y); c.lineTo(x + l, y - l * .06); c.stroke(); }
+  c.restore();
+}
+
+// --- ADEGAN 3: jarak. Kamera mundur dari mobil → tiang → gunung → jauh ke Bulan (skala dipadatkan)
+const S3 = {lantai: 2600, tiang: [380, 2600, 430], gunung: [820, 2300], bulan: [790, 520, 130]};
+G.bintang3 = Array.from({length: 320}, () => [R0() * 2600 - 800, R0() * 2700 - 900, .8 + R0() * 2.6, R0() * 6]);
+G.gunung3 = kerucut(S3.gunung[0], S3.gunung[1], S3.lantai, 470, .8, 3, .02);
+G.bukit3 = punggung(9, 2490, 50, .004, -1400, 2600, 12);
+const KAM3 = [[13.0, 300, 2430, 2.0], [15.2, 300, 2430, 1.8], [16.0, 400, 2380, 1.5], [17.4, 400, 2380, 1.42],
+  [18.4, 560, 2300, 1.05], [19.4, 560, 2280, .98], [20.7, 560, 1560, .6], [23.4, 560, 1520, .56]];
+function kam3(t) { let i = 0; while (i < KAM3.length - 2 && t > KAM3[i + 1][0]) i++;
+  const a = KAM3[i], b = KAM3[i + 1], k = E.io(clamp((t - a[0]) / (b[0] - a[0]), 0, 1));
+  return [lerp(a[1], b[1], k) + nz(t * .4, 3) * 6, lerp(a[2], b[2], k) + nz(t * .4, 4) * 6, lerp(a[3], b[3], k)]; }
+const ke3 = (t, x, y) => { const [fx, fy, z] = kam3(t); return [(x - fx) * z + 540, (y - fy) * z + 960]; };
+function garisPandang(c, x0, y0, x1, y1, k, t, z, warna = PAL.aksen) {
+  if (k <= 0) return; const ex = lerp(x0, x1, k), ey = lerp(y0, y1, k);
+  c.save(); c.lineCap = 'round'; c.strokeStyle = rgba('#05070F', .7); c.lineWidth = 11 / z;
+  c.beginPath(); c.moveTo(x0, y0); c.lineTo(ex, ey); c.stroke();
+  c.strokeStyle = warna; c.lineWidth = 5 / z; c.setLineDash([22 / z, 16 / z]); c.lineDashOffset = -t * 90 / z;
+  c.stroke(); c.restore();
+  titikJelas(c, ex, ey, 9 / z, warna, 1); }
+function adegan3(c, t) {
+  const [fx, fy, z] = kam3(t), L = S3.lantai, [bx, by, br] = S3.bulan;
+  c.save(); c.setTransform(z, 0, 0, z, 540 - fx * z, 960 - fy * z);
+  const g = c.createLinearGradient(0, -600, 0, L); g.addColorStop(0, '#020309'); g.addColorStop(.45, '#0A1130');
+  g.addColorStop(.8, '#26305E'); g.addColorStop(1, '#46518A'); c.fillStyle = g; c.fillRect(-2000, -2000, 5200, L + 2000);
+  G.bintang3.forEach(([x, y, r, f]) => { c.globalAlpha = (.35 + .65 * Math.abs(Math.sin(t * 1.3 + f))) * clamp((2300 - y) / 900, 0, 1);
+    c.fillStyle = '#DDE6F0'; c.fillRect(x, y, r, r); }); c.globalAlpha = 1;
+  const hg = c.createRadialGradient(bx, by, 0, bx, by, br * 6); hg.addColorStop(0, rgba(PAL.halo, .6)); hg.addColorStop(1, rgba(PAL.halo, 0));
+  c.fillStyle = hg; c.fillRect(bx - br * 6, by - br * 6, br * 12, br * 12);
+  c.fillStyle = PAL.inti; c.beginPath(); c.arc(bx, by, br, 0, TAU); c.fill();
+  c.fillStyle = 'rgba(150,160,190,.38)';
+  [[-.3, -.25, .28], [.18, -.32, .2], [.05, .12, .32], [-.38, .3, .16], [.4, .22, .14]].forEach(([u, v, r]) => {
+    c.beginPath(); c.arc(bx + u * br, by + v * br, r * br, 0, TAU); c.fill(); });
+  pendar(c, bx, by, br * 3.5, PAL.halo, .5, 1);
+  cat(c, bentuk(G.gunung3, L + 40), PAL.bukitJauh, {rim: .7, garis: G.gunung3, bb: bbOf(G.gunung3, L), gelap:
+    [[S3.gunung[0] - 4, S3.gunung[1]], [S3.gunung[0] - 80, L], [S3.gunung[0] - 1000, L], [S3.gunung[0] - 1000, S3.gunung[1]]]});
+  cat(c, bentuk(G.bukit3, L + 40), PAL.bukitTengah, {rim: .4, garis: G.bukit3, bb: bbOf(G.bukit3, L)});
+  kabut(c, L - 40, 60, PAL.kabut, t, 6, .55);
+  c.fillStyle = PAL.dekat; c.fillRect(-2000, L - 20, 5200, 2000);
+  c.fillStyle = '#141A3A'; c.fillRect(-2000, L - 20, 5200, 70);
+  c.fillStyle = '#E9E3C4'; for (let x = -2000; x < 3200; x += 120) c.fillRect(x - (t * 40) % 120, L + 12, 60, 5);
+  const [tx, tb, th] = S3.tiang, P = new Path2D(); P.rect(tx - 7, tb - th, 14, th); P.rect(tx - 52, tb - th + 20, 104, 9);
+  cat(c, P, PAL.tinta, {rim: .85, rx: RX * .4, ry: 2});
+  c.strokeStyle = PAL.tinta; c.lineWidth = 2.5; c.beginPath(); c.moveTo(tx - 1400, tb - th + 60); c.quadraticCurveTo(tx - 700, tb - th + 140, tx, tb - th + 24);
+  c.quadraticCurveTo(tx + 700, tb - th + 140, tx + 1400, tb - th + 60); c.stroke();
+  mobil(c, 180, L + 6, .6, t);
+  const mata = [180 - 66 * .6, L + 6 - 114 * .6], s = WAKTU.s3;
+  garisPandang(c, mata[0], mata[1], tx, tb - th + 10, E.out(seg(t, s.tiang - .1, s.tiang + .5)), t, z);
+  garisPandang(c, mata[0], mata[1], S3.gunung[0], S3.gunung[1] + 6, E.out(seg(t, s.gunung - .1, s.gunung + .6)), t, z);
+  garisPandang(c, mata[0], mata[1], bx - br * .5, by + br * .85, E.io(seg(t, s.bulan, s.bulan + 1.2)), t, z, '#FFE7B0');
+  c.restore();
+  const k = E.back(seg(t, s.angka, s.angka + .55)), nx = 540, ny = ke3(t, bx, by)[1] + br * z + 230;
+  if (k > 0) { c.save(); c.translate(nx, ny); c.scale(k, k); c.textAlign = 'center';
+    c.font = "800 50px 'Zen Maru Gothic'"; c.fillStyle = '#FFE7B0'; c.shadowColor = 'rgba(0,0,10,.8)'; c.shadowBlur = 18;
+    c.fillText('jarak ke Bulan', 0, -112);
+    c.font = "800 124px 'Shippori Mincho B1'"; c.fillStyle = '#FFD889'; c.fillText('± 384.000 km', 0, 0); c.restore(); }
+  const ks = seg(t, s.bulan + .8, s.bulan + 1.5);
+  if (ks > 0) { c.save(); c.globalAlpha = ks * .85; c.textAlign = 'center'; c.font = "700 34px 'Zen Maru Gothic'"; c.fillStyle = '#C9D3F5';
+    c.shadowColor = 'rgba(0,0,10,.9)'; c.shadowBlur = 10; c.fillText('(skala jarak dipadatkan)', 540, ke3(t, S3.bulan[0], S3.bulan[1])[1] + S3.bulan[2] * z + 310); c.restore(); }
+  const yb = c.createLinearGradient(0, 1400, 0, H); yb.addColorStop(0, 'rgba(5,7,20,0)'); yb.addColorStop(1, 'rgba(5,7,20,.75)');
+  c.fillStyle = yb; c.fillRect(0, 1400, W, H - 1400);
+  SINAR = [...ke3(t, bx, by), .5 * seg(t, s.bulan + .4, s.bulan + 1.4)];
+}
+
+// --- ADEGAN 4: dilihat dari atas. Mobil maju → arah ke tiang berputar jauh; arah ke Bulan tetap sejajar
+const S4 = {jalan: [1150, 1330], tiang: [560, 930], mobilY: 1250, x0: 250, x1: 830, bulanY: 330};
+G.pohon4 = Array.from({length: 26}, (_, i) => { const r = rng(40 + i); const atas = i % 2;
+  return [r() * 1400 - 160, atas ? 760 + r() * 320 : 1440 + r() * 300, 30 + r() * 30]; }).filter(([x, y]) => Math.hypot(x - 560, y - 930) > 150);
+function mobilAtas(c, x, y, a = 1) {
+  c.save(); c.globalAlpha = a; c.translate(x, y);
+  const g = c.createLinearGradient(110, 0, 520, 0); g.addColorStop(0, rgba(PAL.lampu, .38)); g.addColorStop(1, rgba(PAL.lampu, 0));
+  c.fillStyle = g; c.beginPath(); c.moveTo(110, -36); c.lineTo(520, -110); c.lineTo(520, 110); c.lineTo(110, 36); c.fill();
+  c.fillStyle = 'rgba(0,0,10,.5)'; c.beginPath(); c.roundRect(-118, -54, 244, 116, 34); c.fill();
+  const B = new Path2D(); B.roundRect(-120, -58, 240, 116, 36); cat(c, B, '#2B356B', {rim: .9, rimWarna: '#93A3E6', rx: -6, ry: 6});
+  c.fillStyle = '#121735'; c.beginPath(); c.roundRect(-58, -46, 120, 92, 18); c.fill();
+  c.fillStyle = '#6B5A7A'; c.beginPath(); c.roundRect(40, -44, 26, 88, 8); c.fill(); c.beginPath(); c.roundRect(-66, -42, 18, 84, 6); c.fill();
+  c.fillStyle = '#FFF2C8'; c.fillRect(112, -40, 8, 16); c.fillRect(112, 24, 8, 16); pendar(c, 120, -32, 40, PAL.lampu, .8, 1); pendar(c, 120, 32, 40, PAL.lampu, .8, 1);
+  c.restore(); }
+function patah(c, x, y) {   // tanda "//" = garis ini sebenarnya jauuuh lebih panjang
+  c.save(); c.strokeStyle = '#05070F'; c.lineWidth = 12; c.lineCap = 'round';
+  [-12, 12].forEach(d => { c.beginPath(); c.moveTo(x - 22, y + d + 8); c.lineTo(x + 22, y + d - 8); c.stroke(); });
+  c.strokeStyle = '#DDE6F0'; c.lineWidth = 5; [-12, 12].forEach(d => { c.beginPath(); c.moveTo(x - 22, y + d + 8); c.lineTo(x + 22, y + d - 8); c.stroke(); });
+  c.restore(); }
+function teksKanvas(c, s, x, y, ukuran, warna, a = 1, rata = 'center') {
+  if (a <= .01) return; c.save(); c.globalAlpha = a; c.textAlign = rata; c.font = `800 ${ukuran}px 'Zen Maru Gothic'`;
+  c.lineJoin = 'round'; c.lineWidth = 12; c.strokeStyle = 'rgba(3,5,16,.85)'; c.strokeText(s, x, y); c.fillStyle = warna; c.fillText(s, x, y); c.restore(); }
+function adegan4(c, t) {
+  const s = WAKTU.s4, m = E.io(seg(t, s.maju[0], s.maju[1])), cx = lerp(S4.x0, S4.x1, m), cy = S4.mobilY;
+  c.save(); const zz = 1.04 + .03 * seg(t, 23, 29.85); c.translate(540, 960); c.rotate(nz(t * .2, 5) * .01 - .012); c.scale(zz, zz); c.translate(-540, -960);
+  c.fillStyle = '#101A2C'; c.fillRect(-300, -300, W + 600, H + 600);
+  c.save(); c.globalCompositeOperation = 'soft-light'; c.globalAlpha = .6; c.drawImage(NODA, -300, -300, W + 600, H + 600); c.restore();
+  const [j0, j1] = S4.jalan; c.fillStyle = '#0B0F24'; c.fillRect(-300, j0 - 18, W + 600, j1 - j0 + 36);
+  c.fillStyle = '#171D40'; c.fillRect(-300, j0, W + 600, j1 - j0);
+  c.fillStyle = rgba('#9AA8E0', .45); c.fillRect(-300, j0 + 2, W + 600, 4); c.fillRect(-300, j1 - 6, W + 600, 4);
+  c.fillStyle = '#E9E3C4'; for (let x = -300; x < W + 300; x += 170) c.fillRect(x, (j0 + j1) / 2 - 3, 90, 6);
+  G.pohon4.forEach(([x, y, r], i) => { c.fillStyle = 'rgba(0,0,8,.45)'; c.beginPath(); c.ellipse(x + 14, y + 16, r, r * .9, 0, 0, TAU); c.fill();
+    gumpal(c, [[x, y, r], [x + r * .6, y - r * .3, r * .7], [x - r * .55, y + r * .2, r * .65]], '#152238', 1, {bayang: .1, garisAwan: 2, rimWarna: '#34507A'}); });
+  const [px, py] = S4.tiang;
+  c.fillStyle = 'rgba(0,0,8,.5)'; c.beginPath(); c.ellipse(px + 20, py + 22, 34, 30, 0, 0, TAU); c.fill();
+  c.fillStyle = PAL.tinta; c.fillRect(px - 70, py - 8, 140, 16); c.beginPath(); c.arc(px, py, 22, 0, TAU); c.fill();
+  c.strokeStyle = rgba(PAL.rim, .6); c.lineWidth = 3; c.stroke();
+  const bulanA = seg(t, s.bulan - .3, s.bulan + .4);
+  if (bulanA > 0) { c.save(); c.globalAlpha = bulanA; const by = S4.bulanY;
+    const hg = c.createRadialGradient(540, by, 0, 540, by, 260); hg.addColorStop(0, rgba(PAL.halo, .55)); hg.addColorStop(1, rgba(PAL.halo, 0));
+    c.fillStyle = hg; c.fillRect(280, by - 260, 520, 520); c.fillStyle = PAL.inti; c.beginPath(); c.arc(540, by, 70, 0, TAU); c.fill(); c.restore(); }
+  if (t > s.maju[0] + .2) mobilAtas(c, S4.x0, cy, .35);
+  mobilAtas(c, cx, cy, 1);
+  // garis pandang ke tiang: awal (pudar) & sekarang
+  const aT = E.out(seg(t, s.maju[0] - .3, s.maju[0] + .3));
+  c.restore();
+  const T = (x, y) => { const zz2 = 1.04 + .03 * seg(t, 23, 29.85), r = nz(t * .2, 5) * .01 - .012, dx = (x - 540) * zz2, dy = (y - 960) * zz2;
+    return [540 + dx * Math.cos(r) - dy * Math.sin(r), 960 + dx * Math.sin(r) + dy * Math.cos(r)]; };
+  const P0 = T(S4.x0 + 40, cy), Pn = T(cx + 40, cy), Pt = T(px, py);
+  if (m > .02) panahEnergi(c, [P0, Pt], t, {k: 1, a: .45 * aT, tebal: 10, warna: '#C9B27A'});
+  panahEnergi(c, [Pn, Pt], t, {k: aT, tebal: 16});
+  const kArc = seg(t, s.arc - .2, s.arc + .5);
+  if (kArc > 0) { const a0 = Math.atan2(P0[1] - Pt[1], P0[0] - Pt[0]), a1 = Math.atan2(Pn[1] - Pt[1], Pn[0] - Pt[0]);
+    c.save(); c.globalAlpha = kArc; c.fillStyle = rgba(PAL.aksen, .25); c.beginPath(); c.moveTo(Pt[0], Pt[1]); c.arc(Pt[0], Pt[1], 170, a0, a1, a1 < a0); c.closePath(); c.fill();
+    c.strokeStyle = PAL.aksen; c.lineWidth = 6; c.beginPath(); c.arc(Pt[0], Pt[1], 170, a0, a1, a1 < a0); c.stroke(); c.restore();
+    teksKanvas(c, 'arah ke tiang: berubah jauh', 540, Pt[1] - 150, 54, '#FFE7B0', kArc); }
+  const kB = E.out(seg(t, s.bulan, s.bulan + .7)), yTop = T(540, S4.bulanY + 110)[1];
+  [[S4.x0 + 40, .5], [cx + 40, 1]].forEach(([x, a], i) => { const [qx, qy] = T(x, cy - 60);
+    panahEnergi(c, [[qx, qy], [qx, lerp(qy, yTop, kB)]], t, {k: 1, a: a * Math.min(1, kB * 3), tebal: 14, warna: '#8FB4FF'});
+    if (kB > .6) patah(c, qx, lerp(qy, yTop, .45)); });
+  teksKanvas(c, 'Bulan (jauh banget)', 540, T(540, S4.bulanY)[1] + 130, 46, '#DDE6F0', bulanA);
+  teksKanvas(c, 'arah ke Bulan: hampir sama', 540, 600, 54, '#BFD3FF', seg(t, s.sama - .2, s.sama + .4));
+  SINAR = [...T(540, S4.bulanY), .25 * bulanA];
+}
+
+// --- ADEGAN 5: dari dalam mobil. Jendela = bingkai; semua mundur, Bulan diam di bingkai
+function jendela(c, t, k) {   // k: 1 penuh → 0 hilang (bingkai membesar keluar layar)
+  if (k <= 0) return; const s = 1 + (1 - E.io(k)) * 2.6;
+  c.save(); c.translate(560, 900); c.scale(s, s); c.translate(-560, -900);
+  const O = new Path2D(); O.moveTo(130, 1250); O.lineTo(120, 640); O.quadraticCurveTo(130, 470, 320, 450); O.lineTo(900, 420);
+  O.quadraticCurveTo(1010, 430, 1004, 600); O.lineTo(1004, 1250); O.closePath();
+  const P = new Path2D(); P.rect(-2500, -2500, 6080, 6920); P.addPath(O);
+  c.fillStyle = '#070918'; c.fill(P, 'evenodd');
+  const gi = c.createLinearGradient(0, 1250, 0, 1900); gi.addColorStop(0, '#11163A'); gi.addColorStop(1, '#05060F');
+  c.fillStyle = gi; c.fillRect(-200, 1262, 1500, 900);
+  c.strokeStyle = rgba(PAL.rim, .55); c.lineWidth = 7; c.stroke(O);
+  c.save(); c.clip(O); c.globalCompositeOperation = 'screen'; c.globalAlpha = .12; c.fillStyle = '#DDE6FF';
+  c.beginPath(); c.moveTo(620, 420); c.lineTo(760, 420); c.lineTo(360, 1250); c.lineTo(250, 1250); c.fill(); c.restore();
+  const b = Math.sin(t * 2.2) * 3;
+  c.fillStyle = '#04050D'; c.beginPath(); c.ellipse(300, 1250 + b, 66, 72, -.25, 0, TAU); c.fill();
+  c.beginPath(); c.moveTo(236, 1226 + b); c.quadraticCurveTo(250, 1150 + b, 318, 1168 + b); c.quadraticCurveTo(372, 1180 + b, 362, 1236 + b); c.fill();
+  c.beginPath(); c.ellipse(232, 1262 + b, 14, 22, 0, 0, TAU); c.fill();
+  c.beginPath(); c.moveTo(10, 1980); c.lineTo(36, 1480 + b); c.quadraticCurveTo(70, 1372 + b, 210, 1352 + b); c.lineTo(390, 1356 + b);
+  c.quadraticCurveTo(520, 1380 + b, 540, 1500 + b); c.lineTo(570, 1980); c.fill(); c.fillRect(268, 1290 + b, 64, 80);
+  c.lineCap = 'round'; c.strokeStyle = '#04050D'; c.lineWidth = 58; c.beginPath(); c.moveTo(380, 1420 + b); c.quadraticCurveTo(470, 1300, 590, 1150 + b * .5); c.stroke();
+  c.beginPath(); c.arc(600, 1140 + b * .5, 30, 0, TAU); c.fillStyle = '#04050D'; c.fill();
+  c.strokeStyle = rgba(PAL.rim, .45); c.lineWidth = 4; c.beginPath(); c.ellipse(300, 1250 + b, 66, 72, -.25, -1.6, .4); c.stroke();
+  c.restore(); }
+
+// --- teks DOM & label
+const KICK = $('#tKick'), JUD = $('#tJudul'), PAR = $('#tPar');
+KICK.style.top = (AMAN.atas + 40) + 'px'; JUD.style.top = (AMAN.atas + 110) + 'px'; PAR.style.top = (AMAN.atas + 70) + 'px';
 const LW = {anime: ['#FFE7B0', '#FFFFFF'], noir: ['#C3D0DC', '#EEF2F5'], catair: ['#2B2B35', '#2B2B35'], ukiran: ['#2B1D14', '#2B1D14']}[V];
-// WAKTU: semua detik penting adegan 1 di satu tempat (nanti dipetakan ulang ke suara asli)
-const WAKTU = {judul: .6, judulKeluar: 3.3, gunung: 5.3, bulan: 7.0, labelKeluar: 8.3, tutup: [8.45, 9.55]};
-const L1 = DUNIA[1], xG = 470 + LAJU * WAKTU.gunung * L1.p;   // titik di punggung gunung jauh yang ditunjuk label
+const L1 = DUNIA[1], xG = 470 + LAJU * WAKTU.gunung * L1.p;
 const LBL = [
-  [label({teks: 'gunung jauh', dx: 110, dy: -170, warna: LW[0], warnaTeks: LW[1], ukuran: 50}), WAKTU.gunung, WAKTU.labelKeluar,
+  [label({teks: 'gunung jauh', dx: 110, dy: -170, warna: LW[0], warnaTeks: LW[1], ukuran: 50}), WAKTU.gunung, WAKTU.babak[0] - .4,
     () => layar(xG, yBukit(L1, xG) + 14, L1.p)],
-  [label({teks: 'Bulan', dx: -170, dy: -210, warna: LW[0], warnaTeks: LW[1], ukuran: 56}), WAKTU.bulan, WAKTU.labelKeluar,
-    () => { const [x, y] = BULAN(); return [x - 52, y - 44]; }]
+  [label({teks: 'Bulan', dx: -170, dy: -200, warna: LW[0], warnaTeks: LW[1], ukuran: 56}), WAKTU.bulan, WAKTU.babak[0] - .4,
+    () => { const [x, y] = BULAN(); return [x - 54, y - 50]; }],
+  [label({teks: 'beberapa meter', dx: 120, dy: -150, warna: LW[0], warnaTeks: LW[1], ukuran: 50}), WAKTU.s3.tiang + .3, WAKTU.s3.bulan + .3,
+    t => ke3(t, S3.tiang[0], S3.tiang[1] - S3.tiang[2] + 10)],
+  [label({teks: 'belasan km', dx: 60, dy: -170, warna: LW[0], warnaTeks: LW[1], ukuran: 50}), WAKTU.s3.gunung + .4, WAKTU.s3.bulan + .3,
+    t => ke3(t, S3.gunung[0], S3.gunung[1] + 8)],
+  [label({teks: 'tetap di tempat', dx: -150, dy: -180, warna: LW[0], warnaTeks: LW[1], ukuran: 52}), WAKTU.s5.tetap, WAKTU.s5.buka[0],
+    () => { const [x, y] = BULAN(); return [x - 54, y - 50]; }]
 ];
 const SUBV = {anime: {gaya: 'polos', font: "700 62px 'Zen Maru Gothic'", aksen: PAL.aksen},
   noir: {gaya: 'pil', font: "800 56px 'Bitter'", warna: '#0B1020', aksen: '#B07A10'},
   catair: {gaya: 'pil', font: "800 60px 'Alegreya Sans'", warna: '#2B2B35', aksen: PAL.aksen},
   ukiran: {gaya: 'pil', font: "700 56px 'Spectral'", warna: '#2B1D14', aksen: '#B5442A'}}[V];
-// waktu kata PERKIRAAN untuk gambar uji; setelah VO jadi diganti `mf.py kata` (kata.js).
-const kataDari = (s, t0, t1) => { const w = s.split(' '), d = (t1 - t0) / w.length; return w.map((x, i) => ({w: x, t0: t0 + i * d, t1: t0 + (i + .9) * d})); };
-const KATA = [...kataDari('Pohon di pinggir jalan lewat cepat banget,', 2.7, 5.0),
-  ...kataDari('gunung di belakang geraknya pelan,', 5.1, 6.7), ...kataDari('tapi Bulan… diam aja, nempel terus.', 6.9, 8.6)];
+// subtitle dari kata.js (mf.py kata); kalimat pertama sudah dibawa judul → subtitle mulai setelah judul keluar
+const KATA = (window.KATA || []).filter(k => k.t0 > WAKTU.judulKeluar - .1);
 if (KERTAS) grainOn(.16, 'multiply'); else grainOn(MALAM ? .24 : .14);
 
 /* ==== [11] SCENE ==== */
 const SCENE = {
-  dur: 9.6,
+  dur: 45.6,
   kata: KATA,
-  sub: Object.assign({y: .81, maks: 4, kunci: ['bulan', 'cepat', 'pelan', 'nempel']}, SUBV),
-  audio: {vo: [], sfx: [], music: null},
+  sub: Object.assign({y: .81, maks: 4, kunci: ['bulan', 'bulan?', 'cepet', 'pelan…', 'jarak.', 'meter', 'kilometer.', 'kilometer!', 'mundur,', 'tetap', 'paralaks.', 'ketinggalan.']}, SUBV),
+  audio: {
+    vo: [
+      {src: 'assets/audio/vo-01.mp3', at: .4, teks: 'Pernah nggak sih, lagi naik mobil malem-malem, Bulan kayak ngikutin kita terus?'},
+      {src: 'assets/audio/vo-02.mp3', at: 4.9, teks: 'Coba perhatiin. Tiang listrik lewat cepet banget, gunung geraknya pelan… tapi Bulan? Diem aja, nempel terus.'},
+      {src: 'assets/audio/vo-03.mp3', at: 13.0, teks: 'Rahasianya ada di jarak. Tiang listrik cuma beberapa meter dari kita. Gunung, belasan kilometer. Bulan? Sekitar tiga ratus delapan puluh empat ribu kilometer!'},
+      {src: 'assets/audio/vo-04.mp3', at: 23.3, teks: 'Waktu mobil maju, arah pandang kita ke tiang berubah jauh. Tapi ke Bulan, arahnya hampir nggak berubah sama sekali.'},
+      {src: 'assets/audio/vo-05.mp3', at: 30.0, teks: 'Jadi semua benda kelihatan mundur, cuma Bulan yang tetap di tempat. Makanya kesannya, dia ikut jalan bareng kita.'},
+      {src: 'assets/audio/vo-06.mp3', at: 36.7, teks: 'Efek ini namanya paralaks. Bulan nggak ngikutin kamu, dia cuma kejauhan buat ketinggalan. Kamu dulu juga ngira dikejar Bulan?'}],
+    sfx: [
+      {src: 'assets/audio/sfx-angin.mp3', at: .15, vol: .5},
+      {src: 'assets/audio/sfx-lewat.mp3', at: 9.3, vol: .35},
+      {src: 'assets/audio/sfx-angin.mp3', at: 12.55, vol: .35},
+      {src: 'assets/audio/sfx-mundur.mp3', at: 19.3, vol: .45},
+      {src: 'assets/audio/sfx-denting.mp3', at: 19.95, vol: .35},
+      {src: 'assets/audio/sfx-angin.mp3', at: 22.85, vol: .3},
+      {src: 'assets/audio/sfx-angin.mp3', at: 29.5, vol: .3}],
+    loops: [{src: 'assets/audio/sfx-malam.mp3', a: 0, b: 45.6, vol: .08}],
+    music: null},
   build(tl) {
     tl.to(KICK, {opacity: 1, duration: .6, ease: 'power2.out'}, .35);
     wIn(tl, JUD, WAKTU.judul, {st: .17, d: .7});
     wOut(tl, JUD, WAKTU.judulKeluar); tl.to(KICK, {opacity: 0, duration: .4}, WAKTU.judulKeluar);
+    wIn(tl, PAR, WAKTU.par, {st: .2, d: .8});
   },
   frame(t) {
-    kamera(t); GL = []; GLK = AWAN_PEMBUKA ? seg(t, 1.6, 2.5) : 1;
+    kamera(t); GL = []; GLK = AWAN_PEMBUKA ? seg(t, 1.6, 2.5) : 1; SINAR = null;
     X.setTransform(1, 0, 0, 1, 0, 0); X.globalAlpha = 1; X.globalCompositeOperation = 'source-over';
-    X.fillStyle = PAL.kertas || '#000'; X.fillRect(0, 0, W, H);
-    dunia(X, t); awanPembuka(X, t); pasca(X, t); tutup(X, seg(t, WAKTU.tutup[0], WAKTU.tutup[1]), t);
-    LBL.forEach(([L, a, b, pos]) => { const p = pos(); L.atur(t, a, b, p[0], p[1]); });
+    X.fillStyle = '#000'; X.fillRect(0, 0, W, H);
+    const a = ADEGAN(t), w5 = WAKTU.s5;
+    if (a === 1 || a === 5) {
+      MOBIL.a = a === 5 ? seg(t, w5.buka[0] + .3, w5.buka[1]) : 1;
+      dunia(X, t); if (a === 1) awanPembuka(X, t);
+      if (a === 1) { const kp = seg(t, WAKTU.pin[0], WAKTU.pin[0] + .5) * (1 - seg(t, WAKTU.pin[1], WAKTU.pin[1] + .3)); if (kp > 0) {
+        const [x, y] = BULAN(); X.save(); X.globalAlpha = kp; X.strokeStyle = PAL.aksen; X.lineWidth = 6; X.setLineDash([18, 14]);
+        X.lineDashOffset = -t * 40; X.beginPath(); X.arc(x, y, 76 + 24 * E.out(kp) + Math.sin(t * 4) * 4, 0, TAU); X.stroke(); X.restore(); } }
+      if (a === 5) { const kt = seg(t, w5.tali[0], w5.tali[0] + .6) * (1 - seg(t, w5.tali[1], w5.tali[1] + .4)); if (kt > 0) {
+        const [bx, by] = BULAN(), [mx, my] = layar(JM * .95 + MOBIL.sx - 20, MOBIL.y - 150 * MOBIL.s, .95);
+        X.save(); X.globalAlpha = kt; X.strokeStyle = '#FFE7B0'; X.lineWidth = 5; X.setLineDash([16, 16]); X.lineDashOffset = -t * 60;
+        X.beginPath(); X.moveTo(mx, my); X.quadraticCurveTo((mx + bx) / 2 + 60, (my + by) / 2 + 80, bx - 30, by + 60); X.stroke(); X.restore(); } }
+      pasca(X, t);
+      if (a === 5) { jendela(X, t, 1 - seg(t, w5.buka[0], w5.buka[1]));
+        const km = seg(t, w5.mundur, w5.mundur + .5) * (1 - seg(t, w5.buka[0] - .3, w5.buka[0]));
+        if (km > 0) { panahEnergi(X, [[880, 1130], [430, 1130]], t, {k: E.out(km), a: km, tebal: 16});
+          teksKanvas(X, '← semua mundur', 650, 1070, 50, '#FFE7B0', km); } }
+    } else if (a === 3) { adegan3(X, t); pasca(X, t); }
+    else { adegan4(X, t); pasca(X, t); }
+    WAKTU.babak.forEach(m => sapu(X, t, m));
+    LBL.forEach(([L, a0, b0, pos]) => { const p = pos(t); L.atur(t, a0, b0, p[0], p[1]); });
   }
 };
