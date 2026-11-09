@@ -281,7 +281,7 @@ function setSyuting(c,cam,t){pasang(c,cam,.75);
   lampuSet(c,40,1610,640,1,t,100);kursi(c,915,1620,110);lampuSet(c,1060,1540,620,-1,t,120);}
 
 /* == 7. PROPERTI: papan klak, boom mic, KLAK! ========================================= */
-const ISI_PAPAN={prod:'TUKANG HAJI NAIK BUBUR',roll:'A012',scene:'12',take:'3',sut:'ARA',kam:'A',tgl:'09.11.26'};
+const ISI_PAPAN={prod:'PERCAKAPAN VIRAL',roll:'A012',scene:'12',take:'3',sut:'ARA',kam:'A',tgl:'09.11.26'};
 function zebra(c,x,y,w,h,seed){bentuk(c,kotak(x,y,w,h,4),P.krem,{seed,lw:0,geser:[0,0]});c.save();c.beginPath();c.rect(x,y,w,h);c.clip();c.fillStyle=P.arang;
   for(let i=-1;i<w/46+1;i++){const u=x+i*46;c.beginPath();c.moveTo(u,y+h);c.lineTo(u+23,y+h);c.lineTo(u+46,y);c.lineTo(u+23,y);c.fill();}c.restore();bentuk(c,kotak(x,y,w,h,4),null,{seed,lw:5});}
 function papan(c,x,y,s,rot,buka,isiP=ISI_PAPAN){c.save();c.translate(x,y);c.rotate(rot);c.scale(s,s);
