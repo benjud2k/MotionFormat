@@ -1,2 +1,4 @@
 .potret/
 .riwayat/
+*.mp4
+.render*/
