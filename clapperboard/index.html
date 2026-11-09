@@ -418,12 +418,12 @@ function plakTeks(c,t,tk,x,y){klakTeks(c,t,tk,x,y,'PLAK!',P.pink);}
 /* == 10. WAKTU + SCENE =============================================================== */
 // VO per adegan. 'at' kosong = dihitung dari perkiraan (diganti waktu asli setelah suara jadi)
 const VO=[
-  {at:1.5,teks:'Pernah lihat papan ini di lokasi syuting? Bukan buat gaya-gayaan, lho. Tanpa dia, editor bisa pusing!'},
-  {teks:'Waktu syuting, gambar direkam kamera, tapi suaranya direkam alat lain. Jadinya dua file terpisah yang belum nyambung.',jeda:1.0},
-  {teks:'Nah, pas papan ditepuk, kamera lihat stiknya nutup, dan mic nangkep bunyi klak-nya. Editor tinggal jodohin dua momen itu. Pas! Bibir dan suara langsung sinkron.'},
-  {teks:'Terus, tulisan di papannya? Itu KTP-nya rekaman: adegan berapa, take ke berapa, roll yang mana. Jadi ribuan klip nggak ketuker pas editing.'},
-  {teks:'Bikin konten pakai HP dan mic terpisah? Tepuk tangan sekali di depan kamera. Itu clapperboard versi hemat!'},
-  {teks:'Jadi, satu klak kecil itu nyelametin editor dari kerja berjam-jam. Kamu tim tepuk tangan, atau tim clapper beneran?'}];
+  {at:1.5,src:'assets/audio/vo-01.mp3',teks:'Pernah lihat papan ini di lokasi syuting? Bukan buat gaya-gayaan, lho. Tanpa dia, editor bisa pusing!'},
+  {at:8.85,src:'assets/audio/vo-02.mp3',teks:'Waktu syuting, gambar direkam kamera, tapi suaranya direkam alat lain. Jadinya dua file terpisah yang belum nyambung.'},
+  {at:17.5,src:'assets/audio/vo-03.mp3',teks:'Nah, pas papan ditepuk, kamera lihat stiknya nutup, dan mic nangkep bunyi klak-nya. Editor tinggal jodohin dua momen itu. Pas! Bibir dan suara langsung sinkron.'},
+  {at:29.2,src:'assets/audio/vo-04.mp3',teks:'Terus, tulisan di papannya? Itu KTP-nya rekaman: adegan berapa, take ke berapa, roll yang mana. Jadi ribuan klip nggak ketuker pas editing.'},
+  {at:39.3,src:'assets/audio/vo-05.mp3',teks:'Bikin konten pakai HP dan mic terpisah? Tepuk tangan sekali di depan kamera. Itu clapperboard versi hemat!'},
+  {at:47.0,src:'assets/audio/vo-06.mp3',teks:'Jadi, satu klak kecil itu nyelametin editor dari kerja berjam-jam. Kamu tim tepuk tangan, atau tim clapper beneran?'}];
 function perkiraanKata(teks,mulai,cps=13.5){let t=mulai;return teks.split(/\s+/).map(w=>{const d=Math.max(.17,(w.replace(/[^A-Za-z0-9-]/g,'').length+1)/cps);
   const k={w,t0:+t.toFixed(2),t1:+(t+d*.94).toFixed(2)};t+=d+(/[.!?]$/.test(w)?.32:/,$/.test(w)?.16:0);return k;});}
 const KATA0=[];VO.forEach((v,i)=>{if(v.at==null)v.at=+(KATA0[KATA0.length-1].t1+(v.jeda||.7)).toFixed(2);KATA0.push(...perkiraanKata(v.teks,v.at));});
@@ -471,7 +471,13 @@ const SCENE={
   dur:WAKTU.akhir,
   kata:KATA0,
   sub:{gaya:'mati'},
-  audio:{vo:[],sfx:[],music:null},
+  audio:{vo:VO.map(v=>({src:v.src,at:v.at,teks:v.teks})),
+    sfx:[{src:'assets/audio/sfx-klak.mp3',at:WAKTU.klak-.02,vol:.55},{src:'assets/audio/sfx-whoosh.mp3',at:A2-.5,vol:.35},
+      {src:'assets/audio/sfx-klak.mp3',at:WAKTU.klak2-.02,vol:.5},{src:'assets/audio/sfx-ting.mp3',at:TkV(3,'pas',1)+.05,vol:.25},
+      {src:'assets/audio/sfx-pop.mp3',at:TkV(4,'ribuan')-.2,vol:.35},{src:'assets/audio/sfx-tepuk.mp3',at:WAKTU.plak-.01,vol:.5},
+      {src:'assets/audio/sfx-pop.mp3',at:TkV(5,'clapperboard'),vol:.3},{src:'assets/audio/sfx-pop.mp3',at:TkV(6,'kamu'),vol:.3},
+      {src:'assets/audio/sfx-pop.mp3',at:TkV(6,'tim',1),vol:.3}],
+    music:null},
   muat(){return Promise.all([document.fonts.load("40px 'Patrick Hand'"),document.fonts.load("800 40px 'Bricolage Grotesque'")]).then(siapkanSub);},
   build(tl){const J=$('#judul');wIn(tl,J,.9,{y:70,st:.06,b:0,d:.35,ease:'back.out(2.5)'});wOut(tl,J,WAKTU.mundur+.4,{b:0});},
   frame(t){TN=t;const c=X,cam=kamera(t),tq=Q12(t);c.setTransform(1,0,0,1,0,0);c.fillStyle=P.kertas;c.fillRect(0,0,W,H);
