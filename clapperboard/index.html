@@ -281,14 +281,14 @@ function setSyuting(c,cam,t){pasang(c,cam,.75);
   lampuSet(c,40,1610,640,1,t,100);kursi(c,915,1620,110);lampuSet(c,1060,1540,620,-1,t,120);}
 
 /* == 7. PROPERTI: papan klak, boom mic, KLAK! ========================================= */
-const ISI_PAPAN={prod:'KLAK-KLAK',roll:'A012',scene:'12',take:'3',sut:'ARA',kam:'A',tgl:'09.11.26'};
+const ISI_PAPAN={prod:'TUKANG HAJI NAIK BUBUR',roll:'A012',scene:'12',take:'3',sut:'ARA',kam:'A',tgl:'09.11.26'};
 function zebra(c,x,y,w,h,seed){bentuk(c,kotak(x,y,w,h,4),P.krem,{seed,lw:0,geser:[0,0]});c.save();c.beginPath();c.rect(x,y,w,h);c.clip();c.fillStyle=P.arang;
   for(let i=-1;i<w/46+1;i++){const u=x+i*46;c.beginPath();c.moveTo(u,y+h);c.lineTo(u+23,y+h);c.lineTo(u+46,y);c.lineTo(u+23,y);c.fill();}c.restore();bentuk(c,kotak(x,y,w,h,4),null,{seed,lw:5});}
 function papan(c,x,y,s,rot,buka,isiP=ISI_PAPAN){c.save();c.translate(x,y);c.rotate(rot);c.scale(s,s);
   bentuk(c,kotak(-150,-100,300,240,4),P.arang,{seed:200,lw:5.5,geser:[5,4]});
   garis(c,[[-138,-38],[138,-38]],3.5,P.krem,201,1.2);garis(c,[[-138,80],[138,80]],3.5,P.krem,202,1.2);garis(c,[[-48,-38],[-48,80]],3.5,P.krem,203,1.2);garis(c,[[48,-38],[48,80]],3.5,P.krem,204,1.2);
-  c.fillStyle=P.krem;c.textBaseline='alphabetic';c.textAlign='left';c.font="400 20px 'Patrick Hand'";c.fillText('PROD.',-136,-70);
-  c.font="400 44px 'Patrick Hand'";c.fillText(isiP.prod,-74,-52);
+  c.fillStyle=P.krem;c.textBaseline='alphabetic';c.textAlign='left';c.font="400 19px 'Patrick Hand'";c.fillText('PROD.',-136,-78);
+  {let f=44;c.font=`400 ${f}px 'Patrick Hand'`;const w=c.measureText(isiP.prod).width;if(w>272){f=Math.floor(f*272/w);c.font=`400 ${f}px 'Patrick Hand'`;}c.textAlign='center';c.fillText(isiP.prod,0,-46);c.textAlign='left';}
   c.font="400 21px 'Patrick Hand'";c.textAlign='center';c.fillText('ROLL',-95,-14);c.fillText('SCENE',0,-14);c.fillText('TAKE',95,-14);
   c.font="400 60px 'Patrick Hand'";c.fillText(isiP.roll,-95,56);c.fillStyle=P.mustard;c.fillText(isiP.scene,0,56);c.fillStyle=P.pink;c.fillText(isiP.take,95,56);
   c.fillStyle=P.krem;c.font="400 21px 'Patrick Hand'";c.textAlign='left';c.fillText('SUTRADARA: '+isiP.sut,-62,106);c.textAlign='right';c.fillText('KAM: '+isiP.kam,138,106);c.fillText('TGL: '+isiP.tgl,138,130);
